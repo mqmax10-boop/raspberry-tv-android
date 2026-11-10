@@ -25,16 +25,15 @@ jobs:
 
       - name: Find ZIP file
         run: |
-          ZIP_FILE=$(find . -type f -iname '*Customer-Update.zip' -print -quit)
+          ZIP_FILE=$(find . -maxdepth 2 -type f -iname '*Customer-Update*.zip' -print -quit)
 
           if [ -z "$ZIP_FILE" ]; then
-            echo "ERROR: ZIP file not found"
-            echo "Repository files:"
-            find . -maxdepth 4 -type f
+            echo "ZIP file not found"
+            find . -maxdepth 3 -type f
             exit 1
           fi
 
-          echo "Found ZIP: $ZIP_FILE"
+          echo "Found: $ZIP_FILE"
           mkdir -p project
           unzip -q "$ZIP_FILE" -d project
 
@@ -47,18 +46,16 @@ jobs:
           fi
 
           if [ -z "$SETTINGS" ]; then
-            echo "ERROR: Android project not found"
+            echo "Android project not found"
             find project -maxdepth 5 -type f
             exit 1
           fi
 
           ANDROID_DIR=$(dirname "$SETTINGS")
           echo "ANDROID_DIR=$ANDROID_DIR" >> "$GITHUB_ENV"
-          echo "Android project: $ANDROID_DIR"
 
       - name: Build Android APK
-        run: |
-          gradle -p "$ANDROID_DIR" assembleDebug
+        run: gradle -p "$ANDROID_DIR" assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
