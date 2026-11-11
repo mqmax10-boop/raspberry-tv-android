@@ -1,8 +1,15 @@
 
-name: Build Raspberry TV Android APK
+name: Build Raspberry TV APK
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
+      - master
+
+permissions:
+  contents: read
 
 jobs:
   build:
@@ -12,54 +19,47 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Java
+      - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "17"
+          java-version: '17'
 
-      - name: Install Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: "8.7"
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
 
-      - name: Find ZIP file
+      - name: Find and extract project ZIP
         run: |
-          ZIP_FILE=$(find . -maxdepth 2 -type f -iname '*Customer-Update*.zip' -print -quit)
+          ZIP_FILE=$(find . -maxdepth 2 -type f -iname 'RaspberryTV-Project-Supabase-Configured*.zip' -print -quit)
 
           if [ -z "$ZIP_FILE" ]; then
-            echo "ZIP file not found"
-            find . -maxdepth 3 -type f
+            echo "Project ZIP not found"
             exit 1
           fi
 
-          echo "Found: $ZIP_FILE"
-          mkdir -p project
-          unzip -q "$ZIP_FILE" -d project
+          mkdir -p extracted
+          unzip -q "$ZIP_FILE" -d extracted
 
-      - name: Find Android project
+      - name: Locate Android project
         run: |
-          SETTINGS=$(find project -type f -name settings.gradle -print -quit)
+          GRADLEW=$(find extracted -type f -name gradlew -print -quit)
 
-          if [ -z "$SETTINGS" ]; then
-            SETTINGS=$(find project -type f -name settings.gradle.kts -print -quit)
-          fi
-
-          if [ -z "$SETTINGS" ]; then
-            echo "Android project not found"
-            find project -maxdepth 5 -type f
+          if [ -z "$GRADLEW" ]; then
+            echo "gradlew not found inside ZIP"
             exit 1
           fi
 
-          ANDROID_DIR=$(dirname "$SETTINGS")
-          echo "ANDROID_DIR=$ANDROID_DIR" >> "$GITHUB_ENV"
+          echo "PROJECT_DIR=$(dirname "$GRADLEW")" >> "$GITHUB_ENV"
 
-      - name: Build Android APK
-        run: gradle -p "$ANDROID_DIR" assembleDebug
+      - name: Build APK
+        run: |
+          cd "$PROJECT_DIR"
+          chmod +x gradlew
+          ./gradlew assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Raspberry-TV-Android-APK
-          path: project/**/app/build/outputs/apk/debug/*.apk
+          name: Raspberry-TV-APK
+          path: extracted/**/build/outputs/apk/debug/*.apk
           if-no-files-found: error
