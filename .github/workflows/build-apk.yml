@@ -25,44 +25,39 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Find and extract project ZIP
-        shell: bash
+      - name: Extract project ZIP
         run: |
           ZIP_FILE=$(find . -maxdepth 3 -type f -iname 'RaspberryTV-Project-Supabase-Configured*.zip' -print -quit)
-
           if [ -z "$ZIP_FILE" ]; then
-            echo "ERROR: Project ZIP not found"
+            echo "Project ZIP not found"
             exit 1
           fi
-
           mkdir -p extracted
           unzip -q "$ZIP_FILE" -d extracted
 
-      - name: Locate Android project
-        shell: bash
+      - name: Prepare Android project
         run: |
-          GRADLEW=$(find extracted -type f -name gradlew -print -quit)
+          cd extracted/RaspberryTV-Project/RaspberryTV-Android
 
-          if [ -z "$GRADLEW" ]; then
-            echo "ERROR: gradlew not found inside ZIP"
-            echo "Checking extracted files:"
-            find extracted -maxdepth 3 -type f | head -100
+          if [ ! -f settings.gradle ] && [ ! -f settings.gradle.kts ]; then
+            echo "Android Gradle project not found"
             exit 1
           fi
 
-          PROJECT_DIR=$(dirname "$GRADLEW")
-          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+          if [ ! -f gradlew ]; then
+            gradle wrapper
+          fi
+
+          chmod +x gradlew
 
       - name: Build APK
-        shell: bash
         run: |
-          cd "$PROJECT_DIR"
-          chmod +x gradlew
+          cd extracted/RaspberryTV-Project/RaspberryTV-Android
           ./gradlew assembleDebug --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: Raspberry-TV-APK
-          path: extracted/**/build/outputs/apk/debug/*.apk
+          path: extracted/RaspberryTV-Project/RaspberryTV-Android/**/build/outputs/apk/debug/*.apk
           if-no-files-found: error
