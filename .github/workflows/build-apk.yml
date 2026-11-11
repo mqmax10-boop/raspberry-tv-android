@@ -25,15 +25,13 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
       - name: Find and extract project ZIP
+        shell: bash
         run: |
-          ZIP_FILE=$(find . -maxdepth 2 -type f -iname 'RaspberryTV-Project-Supabase-Configured*.zip' -print -quit)
+          ZIP_FILE=$(find . -maxdepth 3 -type f -iname 'RaspberryTV-Project-Supabase-Configured*.zip' -print -quit)
 
           if [ -z "$ZIP_FILE" ]; then
-            echo "Project ZIP not found"
+            echo "ERROR: Project ZIP not found"
             exit 1
           fi
 
@@ -41,21 +39,26 @@ jobs:
           unzip -q "$ZIP_FILE" -d extracted
 
       - name: Locate Android project
+        shell: bash
         run: |
           GRADLEW=$(find extracted -type f -name gradlew -print -quit)
 
           if [ -z "$GRADLEW" ]; then
-            echo "gradlew not found inside ZIP"
+            echo "ERROR: gradlew not found inside ZIP"
+            echo "Checking extracted files:"
+            find extracted -maxdepth 3 -type f | head -100
             exit 1
           fi
 
-          echo "PROJECT_DIR=$(dirname "$GRADLEW")" >> "$GITHUB_ENV"
+          PROJECT_DIR=$(dirname "$GRADLEW")
+          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
 
       - name: Build APK
+        shell: bash
         run: |
           cd "$PROJECT_DIR"
           chmod +x gradlew
-          ./gradlew assembleDebug
+          ./gradlew assembleDebug --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
