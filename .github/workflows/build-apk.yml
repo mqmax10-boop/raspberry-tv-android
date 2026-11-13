@@ -18,30 +18,41 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Locate and Extract Project
+      - name: Find and Extract Project
         run: |
-          ZIP_FILE=$(find . -type f -iname 'RaspberryTV-Fixed.zip' -print -quit)
+          ZIP_FILE=$(find . -type f \( \
+            -iname 'RaspberryTV-Fixed.zip' -o \
+            -iname 'RaspberryTV-Fixed-Player-Controls.zip' -o \
+            -iname 'RaspberryTV-Fixed-Posters-Separated.zip' \
+          \) -print -quit)
 
           if [ -z "$ZIP_FILE" ]; then
-            echo "ERROR: RaspberryTV-Fixed.zip not found"
+            echo "ERROR: Raspberry TV project ZIP not found"
+            echo "ZIP files available:"
+            find . -type f -iname '*.zip'
             exit 1
           fi
+
+          echo "Using: $ZIP_FILE"
 
           mkdir -p extracted
           unzip -q "$ZIP_FILE" -d extracted
 
-          SETTINGS=$(find extracted -type f \( -name settings.gradle -o -name settings.gradle.kts \) -print -quit)
+          SETTINGS=$(find extracted -type f \( \
+            -name settings.gradle -o \
+            -name settings.gradle.kts \
+          \) -print -quit)
 
           if [ -z "$SETTINGS" ]; then
             echo "ERROR: Android project settings file not found"
-            find extracted -maxdepth 4 -type f | head -100
+            find extracted -maxdepth 5 -type f | head -100
             exit 1
           fi
 
           PROJECT_DIR=$(dirname "$SETTINGS")
           echo "ANDROID_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
 
-          echo "Found project: $PROJECT_DIR"
+          echo "Project directory: $PROJECT_DIR"
           ls -la "$PROJECT_DIR"
 
       - name: Setup Gradle
