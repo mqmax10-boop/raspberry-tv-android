@@ -20,28 +20,24 @@ jobs:
 
       - name: Find and Extract Project
         run: |
-          ZIP_FILE=$(find . -type f \( \
-            -iname 'RaspberryTV-Fixed.zip' -o \
-            -iname 'RaspberryTV-Fixed-Player-Controls.zip' -o \
-            -iname 'RaspberryTV-Fixed-Posters-Separated.zip' \
-          \) -print -quit)
+          ZIP_FILE=$(find . -type f -iname 'RaspberryTV-Fixed-Player-Controls*.zip' -print -quit)
 
           if [ -z "$ZIP_FILE" ]; then
-            echo "ERROR: Raspberry TV project ZIP not found"
-            echo "ZIP files available:"
+            ZIP_FILE=$(find . -type f -iname 'RaspberryTV-Fixed*.zip' -print -quit)
+          fi
+
+          if [ -z "$ZIP_FILE" ]; then
+            echo "ERROR: Project ZIP not found"
             find . -type f -iname '*.zip'
             exit 1
           fi
 
-          echo "Using: $ZIP_FILE"
+          echo "Using ZIP: $ZIP_FILE"
 
           mkdir -p extracted
           unzip -q "$ZIP_FILE" -d extracted
 
-          SETTINGS=$(find extracted -type f \( \
-            -name settings.gradle -o \
-            -name settings.gradle.kts \
-          \) -print -quit)
+          SETTINGS=$(find extracted -type f \( -name settings.gradle -o -name settings.gradle.kts \) -print -quit)
 
           if [ -z "$SETTINGS" ]; then
             echo "ERROR: Android project settings file not found"
@@ -52,8 +48,7 @@ jobs:
           PROJECT_DIR=$(dirname "$SETTINGS")
           echo "ANDROID_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
 
-          echo "Project directory: $PROJECT_DIR"
-          ls -la "$PROJECT_DIR"
+          echo "Android project: $PROJECT_DIR"
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
