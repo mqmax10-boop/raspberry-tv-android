@@ -18,7 +18,7 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Locate and Extract Project ZIP
+      - name: Locate and Extract Project
         run: |
           ZIP_FILE=$(find . -type f -iname 'RaspberryTV-Fixed.zip' -print -quit)
 
@@ -27,30 +27,32 @@ jobs:
             exit 1
           fi
 
-          mkdir extracted
+          mkdir -p extracted
           unzip -q "$ZIP_FILE" -d extracted
 
-          PROJECT_DIR=$(find extracted -type f -name settings.gradle -o -name settings.gradle.kts | head -n 1 | xargs -r dirname)
+          SETTINGS=$(find extracted -type f \( -name settings.gradle -o -name settings.gradle.kts \) -print -quit)
 
-          if [ -z "$PROJECT_DIR" ]; then
-            echo "ERROR: Android Gradle project not found"
-            find extracted -maxdepth 3 -type f
+          if [ -z "$SETTINGS" ]; then
+            echo "ERROR: Android project settings file not found"
+            find extracted -maxdepth 4 -type f | head -100
             exit 1
           fi
 
+          PROJECT_DIR=$(dirname "$SETTINGS")
           echo "ANDROID_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
 
-      - name: Build Debug APK
+          echo "Found project: $PROJECT_DIR"
+          ls -la "$PROJECT_DIR"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      - name: Build APK
         run: |
           cd "$ANDROID_DIR"
-
-          if [ ! -f gradlew ]; then
-            echo "ERROR: gradlew not found"
-            exit 1
-          fi
-
-          chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
+          gradle assembleDebug --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
